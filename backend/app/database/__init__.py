@@ -16,8 +16,7 @@ from sqlalchemy import (
     Text, JSON, Index, UniqueConstraint, LargeBinary
 )
 from sqlalchemy.dialects.postgresql import (
-    UUID, JSONB, ARRAY, INTEGER, VARCHAR, DOUBLE PRECISION,
-    TIMESTAMP, BIGINT
+    UUID, JSONB, ARRAY, INTEGER, VARCHAR, TIMESTAMP, BIGINT
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship

@@ -13,7 +13,7 @@ Provides REST API endpoints for:
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Depends, BackgroundSecurityHTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, validator
@@ -25,9 +25,50 @@ import time
 from enum import Enum
 from pathlib import Path
 
-# Import project modules
-from config import get_config, init_config
-from bridge.ipc import IPCBridge
+# API configuration is intentionally independent from the trading engine's dataclass config.
+class APIConfig:
+    def __init__(self):
+        self._config = {
+            "environment": "demo",
+            "account_mode": "AUTO",
+            "broker": {"symbol": "EURUSDm"},
+            "trading": {"allow_buy": True, "allow_sell": True},
+            "risk": {
+                "max_daily_loss_percent": 2,
+                "max_drawdown_percent": 8,
+                "max_margin_utilization_percent": 20,
+            },
+        }
+
+    def get(self, key, default=None):
+        value = self._config
+        for part in key.split("."):
+            if not isinstance(value, dict) or part not in value:
+                return default
+            value = value[part]
+        return value
+
+    def get_bool(self, key, default=False):
+        return bool(self.get(key, default))
+
+    def get_config(self):
+        return self._config
+
+_api_config = APIConfig()
+
+def get_config():
+    return _api_config
+
+def init_config():
+    return _api_config
+
+class IPCBridge:
+    """Optional bridge: the demo API remains usable without MetaTrader IPC."""
+    def connect(self):
+        return False
+
+    def is_connected(self):
+        return False
 
 # Initialize configuration
 init_config()
@@ -204,8 +245,7 @@ async def startup_event():
     """Initialize on startup."""
     logger.info("CHAOS ENGINE HFT API starting up...")
     
-    # Initialize IPC bridge
-    from bridge.ipc import IPCBridge
+    # Initialize optional IPC bridge
     ipc = IPCBridge()
     if not ipc.connect():
         logger.warning("IPC bridge connection failed on startup")
@@ -249,7 +289,6 @@ async def get_status(
     # Check IPC connection
     ipc_connected = False
     try:
-        from bridge.ipc import IPCBridge
         ipc = IPCBridge()
         ipc_connected = ipc.is_connected()
     except Exception:
